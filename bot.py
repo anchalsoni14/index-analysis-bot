@@ -3,6 +3,10 @@ import requests
 import datetime
 import logging
 
+# Telegram Config — Replace with your actual Bot Token and Chat ID
+TELEGRAM_BOT_TOKEN = "8397748539:AAEvU90zwCRvBhhAr-Ny6Drvy_bfTUP-u-c"
+TELEGRAM_CHAT_ID = "439846137"
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
@@ -33,14 +37,32 @@ def analyze_indices(data):
             result.append(f"{row['IndexName']} is {movement} by {change:.2f}%")
     return result
 
+def send_telegram_message(message: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    try:
+        response = requests.post(url, data=payload)
+        if response.status_code == 200:
+            logging.info("Telegram message sent successfully.")
+        else:
+            logging.error(f"Failed to send message: {response.text}")
+    except Exception as e:
+        logging.error(f"Error sending Telegram message: {e}")
+
 def main():
     logging.info("Starting index analysis bot...")
     data = get_index_data()
     if data:
         analysis = analyze_indices(data)
-        for line in analysis:
-            print(line)
-            logging.info(line)
+        full_message = f"📊 <b>Index Analysis - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}</b>\n\n"
+        full_message += "\n".join(analysis)
+        print(full_message)
+        send_telegram_message(full_message)
+        logging.info("Analysis completed.")
     else:
         logging.info("No data to analyze.")
 
