@@ -3,6 +3,8 @@ import logging
 import requests
 import pandas as pd
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
