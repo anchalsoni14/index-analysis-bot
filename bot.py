@@ -4,16 +4,18 @@ import requests
 import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
+
+# Load environment variables from .env
 load_dotenv()
 
-# Configure logging
+# Setup logging
 logging.basicConfig(
     filename="index_analysis_bot.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-# Load environment variables
+# Load TELEGRAM credentials
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -35,29 +37,29 @@ def send_telegram_message(message: str):
     try:
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        logging.info(f"Telegram message sent: {message}")
+        logging.info("Telegram message sent successfully.")
     except requests.exceptions.RequestException as e:
-        logging.error(f"Telegram error: {e.response.text if hasattr(e, 'response') and e.response else str(e)}")
+        logging.error(f"Telegram error: {str(e)}")
 
 def fetch_data():
     try:
-        # Replace this with your actual source
+        # This should be replaced by real data source
         url = "https://www.niftyindices.com/indices/equity"
         response = requests.get(url, timeout=15)
         response.raise_for_status()
 
-        # For placeholder: simulate parsed data
+        # Placeholder return
         return pd.DataFrame({
             "Index": ["NIFTY MIDCAP 50", "NIFTY BANK"],
             "Signal": ["Buy", "Sell"],
             "Strength": [85, 42]
         })
     except Exception as e:
-        logging.error(f"Exception occurred while fetching data: {str(e)}")
+        logging.error(f"Exception while fetching data: {str(e)}")
         return None
 
 def main():
-    logging.info("Starting index analysis bot...")
+    logging.info("Starting Index Analysis Bot...")
 
     send_telegram_message("✅ <b>Index Option Strategy Bot Started</b>\n\nRunning signal analysis...")
 
