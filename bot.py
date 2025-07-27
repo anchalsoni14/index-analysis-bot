@@ -59,9 +59,14 @@ def fetch_data():
         return None
 
 def main():
-    logging.info("Starting Index Analysis Bot...")
+    logging.info("Starting index analysis bot...")
+    logging.info(f"TELEGRAM_TOKEN present: {'Yes' if TELEGRAM_TOKEN else 'No'}")
+    logging.info(f"TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID}")
 
     send_telegram_message("✅ <b>Index Option Strategy Bot Started</b>\n\nRunning signal analysis...")
+
+    
+
 
     data = fetch_data()
 
