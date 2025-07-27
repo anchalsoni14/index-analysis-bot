@@ -1,87 +1,100 @@
 import os
-import logging
 import requests
-import pandas as pd
-from datetime import datetime
+import time
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
-# Load environment variables from .env
+# Load environment variables
 load_dotenv()
-
-# Setup logging
-logging.basicConfig(
-    filename="index_analysis_bot.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-
-# Load TELEGRAM credentials
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+NIFTY_URL = os.getenv("NIFTY_URL", "https://www.niftyindices.com/indices/equity")
 
-logging.info(f"TELEGRAM_TOKEN: {'Set' if TELEGRAM_TOKEN else 'Missing'}")
-logging.info(f"TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID if TELEGRAM_CHAT_ID else 'Missing'}")
-
-def send_telegram_message(message: str):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        logging.error("Telegram credentials are missing.")
-        return
-
+# Telegram send message
+def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
         "parse_mode": "HTML"
     }
-
     try:
-        response = requests.post(url, json=payload, timeout=10)
-        response.raise_for_status()
-        logging.info("Telegram message sent successfully.")
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Telegram error: {str(e)}")
-
-def fetch_data():
-    try:
-        # This should be replaced by real data source
-        url = "https://www.niftyindices.com/indices/equity"
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-
-        # Placeholder return
-        return pd.DataFrame({
-            "Index": ["NIFTY MIDCAP 50", "NIFTY BANK"],
-            "Signal": ["Buy", "Sell"],
-            "Strength": [85, 42]
-        })
+        res = requests.post(url, json=payload)
+        if res.status_code != 200:
+            print(f"Telegram Error: {res.text}")
     except Exception as e:
-        logging.error(f"Exception while fetching data: {str(e)}")
-        return None
+        print(f"Telegram Exception: {e}")
 
-def main():
-    logging.info("Starting index analysis bot...")
-    logging.info(f"TELEGRAM_TOKEN present: {'Yes' if TELEGRAM_TOKEN else 'No'}")
-    logging.info(f"TELEGRAM_CHAT_ID: {TELEGRAM_CHAT_ID}")
+# Scrape index data
+def fetch_index_data():
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/115.0.0.0 Safari/537.36"
+        )
+    }
 
-    send_telegram_message("✅ <b>Index Option Strategy Bot Started</b>\n\nRunning signal analysis...")
+    try:
+        response = requests.get(NIFTY_URL, headers=headers, timeout=30)
+        response.raise_for_status()
 
-    
+        # Save HTML for inspection if needed
+        with open("nifty_indices_raw.html", "w", encoding="utf-8") as f:
+            f.write(response.text)
 
+        soup = BeautifulSoup(response.text, "html.parser")
+        index_table = soup.find("table", {"id": "equityStockIndicesTable"})
 
-    data = fetch_data()
+        if not index_table:
+            print("⚠️ Index table not found in HTML.")
+            return []
 
-    if data is None or data.empty:
-        logging.warning("No data to analyze.")
+        rows = index_table.find("tbody").find_all("tr")
+        index_data = []
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) >= 5:
+                index_name = cols[0].text.strip()
+                current_value = cols[1].text.strip()
+                change = cols[2].text.strip()
+                percent_change = cols[3].text.strip()
+                index_data.append({
+                    "name": index_name,
+                    "value": current_value,
+                    "change": change,
+                    "percent": percent_change
+                })
+        return index_data
+
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error fetching index data: {e}")
+        return []
+
+# Analyze and send signals
+def analyze_and_alert(index_data):
+    if not index_data:
         send_telegram_message("⚠️ No index data available for analysis.")
         return
 
-    summary = "\n".join([
-        f"🔹 <b>{row['Index']}</b>: {row['Signal']} (Strength: {row['Strength']})"
-        for _, row in data.iterrows()
-    ])
+    send_telegram_message("✅ Index Option Strategy Bot Started\n\nRunning signal analysis...")
 
-    message = f"<b>📊 Index Analysis Signals:</b>\n\n{summary}"
-    send_telegram_message(message)
+    for index in index_data:
+        try:
+            percent = float(index["percent"].replace("%", "").replace(",", ""))
+            name = index["name"]
+            if percent >= 0.5:
+                msg = f"📈 <b>{name}</b> is up by {percent}% — Consider <b>BUYING CE</b>"
+                send_telegram_message(msg)
+            elif percent <= -0.5:
+                msg = f"📉 <b>{name}</b> is down by {percent}% — Consider <b>BUYING PE</b>"
+                send_telegram_message(msg)
+        except Exception as e:
+            print(f"⚠️ Error analyzing {index['name']}: {e}")
 
+# Main entry
 if __name__ == "__main__":
-    main()
+    send_telegram_message("📡 Telegram Bot test successful!")
+    print("✅ Index Option Strategy Bot Started\n")
+    index_data = fetch_index_data()
+    analyze_and_alert(index_data)
