@@ -8,8 +8,11 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 
 # ====== CONFIGURE TELEGRAM ======
-TELEGRAM_TOKEN = os.getenv("8397748539:AAEvU90zwCRvBhhAr-Ny6Drvy_bfTUP-u-c")
-TELEGRAM_CHAT_ID = os.getenv("439846137")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+print("TELEGRAM_TOKEN:", bool(TELEGRAM_TOKEN))
+print("TELEGRAM_CHAT_ID:", TELEGRAM_CHAT_ID)
 
 def send_telegram_message(message):
     if TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
